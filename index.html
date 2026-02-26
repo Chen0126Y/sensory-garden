@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>感官花园 · Jardin des Sens</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper:#f7f1e3; --ink:#2d1f0e; --sienna:#8b5a2b; --gold:#c9a96e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--paper);cursor:none;touch-action:none}
+#cursor{position:fixed;width:7px;height:7px;border-radius:50%;background:var(--sienna);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);mix-blend-mode:multiply;transition:width .18s,height .18s}
+#cursor.big{width:28px;height:28px;opacity:.28}
+#bg-canvas{position:fixed;inset:0;z-index:0}
+#grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.38;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E");background-size:200px}
+#vig{position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse 88% 82% at 50% 48%,transparent 38%,rgba(210,188,148,.5) 100%)}
+
+/* ── BOOT ── */
+#boot{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--paper);transition:opacity 1.4s}
+#boot.fade{opacity:0;pointer-events:none}
+#boot-bg{position:absolute;inset:0}
+.boot-inner{position:relative;z-index:2;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1.4rem}
+.boot-title{font-family:'Noto Serif SC',serif;font-weight:300;font-size:clamp(2.4rem,7vw,5rem);color:rgba(45,31,14,.65);letter-spacing:.25em;line-height:1.25}
+.boot-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.82rem;letter-spacing:.38em;color:rgba(139,90,43,.38)}
+.boot-btn{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.75rem;letter-spacing:.32em;color:rgba(139,90,43,.45);border:1px solid rgba(139,90,43,.2);border-radius:100px;background:rgba(255,255,255,.55);padding:.75rem 2.2rem;cursor:pointer;transition:all .4s;backdrop-filter:blur(6px)}
+.boot-btn:hover{color:rgba(80,48,16,.8);background:rgba(255,255,255,.82);box-shadow:0 4px 20px rgba(0,0,0,.07)}
+
+/* ── LANG ── */
+#langs{position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:.18rem;background:rgba(255,255,255,.38);border:1px solid rgba(139,90,43,.13);border-radius:100px;padding:.25rem .38rem;backdrop-filter:blur(8px)}
+.lng{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.56rem;letter-spacing:.14em;color:rgba(100,65,30,.32);padding:.2rem .55rem;border-radius:100px;cursor:pointer;transition:all .22s}
+.lng.on{color:rgba(70,42,12,.78);background:rgba(255,255,255,.62)}
+
+/* ── MAIN ── */
+#app{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s}
+#app.visible{opacity:1}
+
+/* ── CENTRAL STAGE — radial palette ── */
+#stage{position:relative;width:min(88vw,88vh,520px);height:min(88vw,88vh,520px);flex-shrink:0}
+
+/* bowl */
+#bowl-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:42%;height:42%;border-radius:50%}
+#bowl-canvas{width:100%;height:100%;border-radius:50%;display:block}
+.bowl-ring{position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(139,90,43,.16);pointer-events:none}
+.bowl-ring2{position:absolute;inset:-14px;border-radius:50%;border:1px dotted rgba(139,90,43,.07);pointer-events:none}
+
+.drop-hint{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:5;transition:opacity .6s}
+#hint-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(.52rem,.9vw,.7rem);color:rgba(100,65,30,.28);text-align:center;line-height:2.2}
+
+/* blend name + narrative — below bowl */
+#center-label{position:absolute;top:calc(50% + 22%);left:50%;transform:translateX(-50%);text-align:center;width:70%;pointer-events:none}
+#blend-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(.85rem,1.8vw,1.05rem);color:rgba(70,45,15,.5);letter-spacing:.08em;transition:all .9s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#narrative{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(.62rem,1.2vw,.75rem);color:rgba(100,65,30,.36);line-height:1.9;margin-top:.3rem;transition:all .8s}
+
+/* ── RADIAL NOTE BUTTONS ── */
+.note-btn{
+  position:absolute;
+  width:clamp(36px,5.5vw,52px);height:clamp(36px,5.5vw,52px);
+  border-radius:50%;cursor:pointer;
+  transform:translate(-50%,-50%);
+  border:none;outline:none;
+  transition:transform .22s, box-shadow .22s, opacity .3s;
+  box-shadow:0 2px 10px rgba(0,0,0,.14), inset 0 1px 2px rgba(255,255,255,.5);
+}
+.note-btn:hover{transform:translate(-50%,-50%) scale(1.22);box-shadow:0 5px 20px rgba(0,0,0,.2)}
+.note-btn.placed{opacity:.32;transform:translate(-50%,-50%) scale(.82);box-shadow:0 1px 5px rgba(0,0,0,.1)}
+.note-btn.placed:hover{transform:translate(-50%,-50%) scale(.82)}
+.note-btn .nb-label{
+  position:absolute;pointer-events:none;
+  font-family:'Cormorant Garamond',serif;font-style:italic;
+  font-size:clamp(.38rem,.65vw,.52rem);color:rgba(70,42,12,.65);
+  white-space:nowrap;text-align:center;
+  /* label position set by JS */
+}
+.note-btn .nb-order{
+  position:absolute;top:-2px;right:-2px;width:14px;height:14px;border-radius:50%;
+  background:rgba(100,65,30,.55);color:rgba(255,242,210,.9);font-size:.36rem;
+  font-family:sans-serif;display:none;align-items:center;justify-content:center;
+}
+.note-btn.placed .nb-order{display:flex}
+
+/* ── RIGHT PANEL ── */
+#panel{
+  position:fixed;right:0;top:0;bottom:0;width:clamp(180px,22vw,240px);
+  padding:3.5rem 1.2rem 1.5rem 1rem;
+  display:flex;flex-direction:column;gap:.85rem;
+  border-left:1px solid rgba(139,90,43,.08);
+  overflow-y:auto;z-index:20;
+}
+#panel::-webkit-scrollbar{display:none}
+.panel-lbl{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.53rem;letter-spacing:.42em;color:rgba(100,65,30,.28);text-transform:uppercase}
+#track-name{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.9rem;color:rgba(70,45,15,.52);min-height:1.35em;line-height:1.5;transition:all .6s}
+#wave-canvas{width:100%;height:44px;border-radius:4px;display:block}
+.play-row{display:flex;align-items:center;gap:.8rem}
+#play-btn{width:38px;height:38px;border-radius:50%;flex-shrink:0;background:rgba(255,255,255,.4);border:1.5px solid rgba(139,90,43,.2);color:rgba(100,65,30,.55);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s}
+#play-btn:hover{background:rgba(255,255,255,.75);border-color:rgba(139,90,43,.45)}
+#play-btn.on{background:rgba(139,90,43,.1)}
+.vol-col{flex:1}
+.vol-lbl{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.44rem;letter-spacing:.26em;color:rgba(100,65,30,.28);display:block;margin-bottom:.25rem}
+input[type=range]{-webkit-appearance:none;width:100%;height:1px;background:rgba(139,90,43,.18);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:rgba(100,65,30,.45);transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.5)}
+.yt-lbl{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.48rem;letter-spacing:.26em;color:rgba(100,65,30,.26)}
+#yt-tabs{display:flex;gap:.28rem;flex-wrap:wrap}
+.yt-tab{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.48rem;letter-spacing:.1em;padding:.22rem .58rem;border:1px solid rgba(139,90,43,.15);border-radius:100px;color:rgba(100,65,30,.3);cursor:pointer;background:rgba(255,255,255,.32);transition:all .25s}
+.yt-tab.on{color:rgba(70,42,12,.7);border-color:rgba(139,90,43,.36);background:rgba(255,255,255,.62)}
+#yt-frame{width:100%;aspect-ratio:16/9;border-radius:7px;overflow:hidden;background:rgba(200,178,140,.1);border:1px solid rgba(139,90,43,.1);position:relative}
+#yt-frame iframe{width:100%;height:100%;border:none}
+.yt-ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.58rem;color:rgba(100,65,30,.24);text-align:center;line-height:2}
+.story-lbl{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.53rem;letter-spacing:.42em;color:rgba(100,65,30,.28);text-transform:uppercase;margin-bottom:.35rem}
+#story-text{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.68rem;color:rgba(80,52,22,.52);line-height:1.88;min-height:3em;transition:all .9s;flex:1}
+#yt-link{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.54rem;letter-spacing:.14em;color:rgba(100,65,30,.4);text-decoration:none;border-bottom:1px solid rgba(139,90,43,.18);padding-bottom:.1rem;transition:all .3s;align-self:flex-start;margin-top:.4rem}
+#yt-link:hover{color:rgba(70,42,12,.7);border-color:rgba(139,90,43,.45)}
+#petals{display:flex;flex-wrap:wrap;gap:.32rem;margin-top:auto}
+.petal{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.5rem;letter-spacing:.12em;padding:.22rem .62rem;border:1px solid rgba(139,90,43,.12);border-radius:100px;color:rgba(100,65,30,.26);background:rgba(255,255,255,.28);transition:all .7s}
+.petal.on{color:rgba(65,38,10,.7);border-color:rgba(139,90,43,.36);background:rgba(255,255,255,.62)}
+
+/* clear btn */
+#btn-clear{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%);z-index:30;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.56rem;letter-spacing:.24em;color:rgba(100,65,30,.28);border:1px solid rgba(139,90,43,.15);border-radius:100px;background:rgba(255,255,255,.4);padding:.32rem .9rem;cursor:pointer;transition:all .3s;backdrop-filter:blur(6px)}
+#btn-clear:hover{color:rgba(70,42,12,.65);border-color:rgba(139,90,43,.35);background:rgba(255,255,255,.72)}
+
+/* tooltip */
+#tooltip{position:fixed;z-index:200;pointer-events:none;opacity:0;transition:opacity .18s;background:rgba(250,244,232,.97);border:1px solid rgba(139,90,43,.14);border-radius:8px;padding:.65rem .95rem;max-width:172px;box-shadow:0 4px 22px rgba(0,0,0,.07);backdrop-filter:blur(8px)}
+.tt-name{font-size:.7rem;color:rgba(45,31,14,.8);margin-bottom:.2rem}
+.tt-brand{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.54rem;color:rgba(100,65,30,.4);margin-bottom:.35rem}
+.tt-desc{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.62rem;color:rgba(80,52,22,.52);line-height:1.7}
+
+/* ripple on click */
+@keyframes ripple{0%{transform:translate(-50%,-50%) scale(.5);opacity:.6}100%{transform:translate(-50%,-50%) scale(2.8);opacity:0}}
+.ripple-dot{position:absolute;width:52px;height:52px;border-radius:50%;pointer-events:none;border:1.5px solid currentColor;animation:ripple .7s ease-out forwards;z-index:2}
+
+/* mobile: panel slides to bottom */
+@media(max-width:640px){
+  #panel{right:auto;top:auto;bottom:0;left:0;width:100%;height:auto;max-height:42vh;flex-direction:row;flex-wrap:wrap;padding:1rem 1.2rem;border-left:none;border-top:1px solid rgba(139,90,43,.1);gap:.6rem;overflow-x:auto}
+  #stage{width:min(92vw,55vh);height:min(92vw,55vh);margin-top:-1rem}
+  .panel-lbl{font-size:.5rem}
+  #track-name{font-size:.78rem}
+  #yt-frame{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <canvas id="boot-bg"></canvas>
+  <div class="boot-inner">
+    <div class="boot-title">感官花园</div>
+    <div class="boot-sub">Jardin des Sens · Sensory Garden · 感覚の庭</div>
+    <button class="boot-btn" onclick="enterGarden()">入园 · Enter</button>
+  </div>
+</div>
+
+<div id="cursor"></div>
+<div id="tooltip"><div class="tt-name" id="tt-name"></div><div class="tt-brand" id="tt-brand"></div><div class="tt-desc" id="tt-desc"></div></div>
+<canvas id="bg-canvas"></canvas>
+<div id="grain"></div>
+<div id="vig"></div>
+
+<div id="langs">
+  <div class="lng on" onclick="setLang('zh')">中文</div>
+  <div class="lng" onclick="setLang('en')">EN</div>
+  <div class="lng" onclick="setLang('fr')">FR</div>
+  <div class="lng" onclick="setLang('jp')">日本語</div>
+</div>
+
+<div id="app">
+  <div id="stage">
+    <!-- bowl -->
+    <div id="bowl-wrap">
+      <canvas id="bowl-canvas"></canvas>
+      <div class="bowl-ring"></div>
+      <div class="bowl-ring2"></div>
+      <div class="drop-hint"><span id="hint-text">点击香调<br>加入调配</span></div>
+    </div>
+    <!-- note buttons rendered by JS -->
+    <!-- labels -->
+    <div id="center-label">
+      <div id="blend-name">—</div>
+      <div id="narrative"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="panel">
+  <div class="panel-lbl" id="lbl-sound">声音花园</div>
+  <div id="track-name"></div>
+  <canvas id="wave-canvas"></canvas>
+  <div class="play-row">
+    <button id="play-btn" onclick="togglePlay()">▶</button>
+    <div class="vol-col">
+      <label class="vol-lbl" id="lbl-vol">音量</label>
+      <input type="range" id="vol-range" min="0" max="100" value="55" oninput="setVolume(this.value)">
+    </div>
+  </div>
+  <div class="story-lbl" id="lbl-story">今日香事</div>
+  <div id="story-text"></div>
+  <a id="yt-link" href="#" target="_blank" style="display:none"></a>
+  <div id="petals"></div>
+</div>
+
+<button id="btn-clear" onclick="clearBowl()">清空</button>
+
+<script>
+// ═══════════════════════════════════
+// I18N
+// ═══════════════════════════════════
+const L10N = {
+  zh:{sound:'声音花园',vol:'音量',music:'配乐',clear:'清空',hint:'点击香调\n加入调配',wait:'等待调配…',ytPh:'调配后自动匹配',
+      roles:['前调','中调','后调','尾韵','余香','底调'],
+      petals:['感性','明朗','深沉','温暖','空灵','平静'],
+      ytTabs:['自然','钢琴','冥想','古典'],
+      narr:[n=>`以${n[0]}开场`,n=>`${n[0]}引路，${n[1]}随之`,n=>`${n[0]} · ${n[1]} · ${n[2]}`,n=>`${n[0]}定调，层层叠加`]},
+  en:{sound:'Sound',vol:'Volume',music:'Music',clear:'Clear',hint:'Tap a note\nto add',wait:'Waiting…',ytPh:'Blend first',
+      roles:['Top','Heart','Base','Dry-down','Tail','Fond'],
+      petals:['Sensual','Bright','Deep','Warm','Ethereal','Calm'],
+      ytTabs:['Nature','Piano','Meditation','Classical'],
+      narr:[n=>`${n[0]} opens`,n=>`${n[0]} leads, ${n[1]} follows`,n=>`${n[0]} · ${n[1]} · ${n[2]}`,n=>`${n[0]} grounds the blend`]},
+  fr:{sound:'Son',vol:'Volume',music:'Musique',clear:'Vider',hint:'Touchez une\nnote',wait:'En attente…',ytPh:'Après mélange',
+      roles:['Tête','Cœur','Fond','Séchage','Queue','Base'],
+      petals:['Sensuel','Lumineux','Profond','Chaud','Éthéré','Calme'],
+      ytTabs:['Nature','Piano','Méditation','Classique'],
+      narr:[n=>`${n[0]} ouvre`,n=>`${n[0]} mène, ${n[1]} suit`,n=>`${n[0]} · ${n[1]} · ${n[2]}`,n=>`${n[0]} ancre le tout`]},
+  jp:{sound:'音',vol:'音量',music:'音楽',clear:'クリア',hint:'香料を\nタップ',wait:'調合待ち…',ytPh:'調合後に選曲',
+      roles:['トップ','ミドル','ベース','ドライダウン','テール','ベース'],
+      petals:['官能的','明るい','深い','温かい','幽玄','穏やか'],
+      ytTabs:['自然','ピアノ','瞑想','クラシック'],
+      narr:[n=>`${n[0]}から始まる`,n=>`${n[0]}が導き${n[1]}が続く`,n=>`${n[0]} · ${n[1]} · ${n[2]}`,n=>`${n[0]}が基調を定める`]},
+};
+
+// ═══════════════════════════════════
+// NOTES — 16 fragrances with SOUND PROFILE
+// Each has: naturalSound (bird/wave/wind/rain/fire/water) + synth params
+// ═══════════════════════════════════
+const NOTES = [
+  {id:'rose',     zh:'玫瑰',  en:'Rose',      fr:'Rose',    jp:'バラ',
+   brand:'Dior · Miss Dior',   c:'#e07888', fam:'floral',
+   d:{zh:'大马士革玫瑰，蜜糖花心',en:'Damascus rose, honeyed heart',fr:'Rose de Damas, cœur sucré',jp:'ダマスクローズ、甘い花芯'},
+   sound:'bird',    freq:220, bpm:58},
+  {id:'jasmine',  zh:'茉莉',  en:'Jasmine',   fr:'Jasmin',  jp:'ジャスミン',
+   brand:'Chanel · No.5',      c:'#f0d060', fam:'floral',
+   d:{zh:'印度茉莉，夜晚的甜蜜迷醉',en:'Indian jasmine, sweet night bloom',fr:'Jasmin indien, douceur nocturne',jp:'インドのジャスミン、夜の甘さ'},
+   sound:'bird',    freq:196, bpm:52},
+  {id:'iris',     zh:'鸢尾',  en:'Iris',      fr:'Iris',    jp:'アイリス',
+   brand:'Prada · Infusion',   c:'#9878c8', fam:'powder',
+   d:{zh:'佛罗伦萨鸢尾，粉质高冷',en:'Florentine iris, powdery poise',fr:'Iris florentin, fraîcheur poudrée',jp:'フィレンツェのアイリス、粉質の高貴さ'},
+   sound:'stream',  freq:246, bpm:56},
+  {id:'lily',     zh:'铃兰',  en:'Lily',      fr:'Muguet',  jp:'スズラン',
+   brand:'Dior · Diorissimo',  c:'#b8e8a0', fam:'floral',
+   d:{zh:'山谷铃兰，清澈绿色花香',en:'Lily of the valley, clear green',fr:'Muguet, fraîcheur verte',jp:'スズラン、澄んだ緑の花'},
+   sound:'bird',    freq:261, bpm:68},
+  {id:'oak',      zh:'橡木',  en:'Oak',       fr:'Chêne',   jp:'オーク',
+   brand:'Jo Malone · Oak',    c:'#8b6038', fam:'woody',
+   d:{zh:'英国橡木，大地根基',en:'English oak, earth\'s foundation',fr:'Chêne anglais, racine terrestre',jp:'オーク、大地の根基'},
+   sound:'stream',  freq:110, bpm:44},
+  {id:'cedar',    zh:'雪松',  en:'Cedar',     fr:'Cèdre',   jp:'シダー',
+   brand:'Tom Ford · Oud Wood',c:'#c87840', fam:'woody',
+   d:{zh:'弗吉尼亚雪松，铅笔的温暖',en:'Virginia cedar, warm shavings',fr:'Cèdre de Virginie, chaleur crayon',jp:'バージニアシダー、温かな鉛筆'},
+   sound:'wind',    freq:130, bpm:42},
+  {id:'sandalwood',zh:'檀香', en:'Sandalwood',fr:'Santal',  jp:'サンダルウッド',
+   brand:'Byredo · Gypsy Water',c:'#d4a870',fam:'woody',
+   d:{zh:'迈索尔檀香，奶油木质',en:'Mysore sandalwood, creamy wood',fr:'Santal de Mysore, bois crémeux',jp:'マイソールサンダルウッド、クリーミー'},
+   sound:'stream',  freq:146, bpm:40},
+  {id:'bergamot', zh:'佛手柑',en:'Bergamot',  fr:'Bergamote',jp:'ベルガモット',
+   brand:'Acqua di Parma',     c:'#a8c850', fam:'citrus',
+   d:{zh:'西西里佛手柑，地中海清晨',en:'Sicilian bergamot, morning sun',fr:'Bergamote sicilienne, matin',jp:'シチリアのベルガモット、朝の光'},
+   sound:'rain',    freq:329, bpm:80},
+  {id:'seasalt',  zh:'海盐',  en:'Sea Salt',  fr:'Sel Marin',jp:'シーソルト',
+   brand:'Jo Malone · Wood Sage',c:'#68b8d0',fam:'aquatic',
+   d:{zh:'鼠尾草与海盐，风的形状',en:'Wood sage & sea salt, shaped wind',fr:'Sauge et sel, forme du vent',jp:'ウッドセージと海塩、風の形'},
+   sound:'ocean',   freq:293, bpm:62},
+  {id:'amber',    zh:'琥珀',  en:'Amber',     fr:'Ambre',   jp:'アンバー',
+   brand:'YSL · Black Opium',  c:'#e8a840', fam:'oriental',
+   d:{zh:'古老琥珀，东方暖核',en:'Ancient amber, oriental warmth',fr:'Ambre ancien, chaleur orientale',jp:'古代アンバー、東洋の温もり'},
+   sound:'fire',    freq:174, bpm:48},
+  {id:'oud',      zh:'沉香',  en:'Oud',       fr:'Oud',     jp:'ウード',
+   brand:'Maison Margiela',    c:'#804040', fam:'oriental',
+   d:{zh:'阿拉伯沉香，神圣烟熏',en:'Agarwood, sacred incense smoke',fr:'Bois d\'agar, fumée sacrée',jp:'沈香、神聖な煙'},
+   sound:'fire',    freq:138, bpm:38},
+  {id:'musk',     zh:'麝香',  en:'Musk',      fr:'Musc',    jp:'ムスク',
+   brand:'Narciso Rodriguez',  c:'#c8a8d0', fam:'musk',
+   d:{zh:'白麝香，肌肤第二层',en:'White musk, your second skin',fr:'Musc blanc, seconde peau',jp:'ホワイトムスク、第二の肌'},
+   sound:'stream',  freq:164, bpm:52},
+  {id:'vetiver',  zh:'岩兰草',en:'Vetiver',   fr:'Vétiver', jp:'ベチバー',
+   brand:'Hermès · Terre',     c:'#688038', fam:'earthy',
+   d:{zh:'岩兰草根，泥土深邃',en:'Vetiver root, deep dark earth',fr:'Vétiver, terre profonde',jp:'ベチバーの根、深い大地'},
+   sound:'wind',    freq:123, bpm:46},
+  {id:'peony',    zh:'牡丹',  en:'Peony',     fr:'Pivoine', jp:'ピオニー',
+   brand:'Jo Malone · Peony & Blush',c:'#e890a8',fam:'floral',
+   d:{zh:'牡丹与绒面麂皮，富贵柔软',en:'Peony & suede, opulent softness',fr:'Pivoine et suède, opulence',jp:'牡丹とスエード、豊かな柔らかさ'},
+   sound:'bird',    freq:233, bpm:55},
+  {id:'neroli',   zh:'橙花',  en:'Neroli',    fr:'Néroli',  jp:'ネロリ',
+   brand:'Hermès · Jardin sur le Nil',c:'#f0c850',fam:'citrus',
+   d:{zh:'苦橙花，阳光甜蜜清新',en:'Orange blossom, sweet sunny fresh',fr:'Fleur d\'oranger, fraîcheur ensoleillée',jp:'オレンジブロッサム、甘い清涼感'},
+   sound:'rain',    freq:311, bpm:76},
+  {id:'tobacco',  zh:'烟草',  en:'Tobacco',   fr:'Tabac',   jp:'タバコ',
+   brand:'Tom Ford · Tobacco Vanille',c:'#a06830',fam:'oriental',
+   d:{zh:'香草烟草，温暖甜蜜黑暗',en:'Vanilla tobacco, warm dark sweet',fr:'Tabac vanille, obscurité chaude',jp:'バニラタバコ、温かく甘い闇'},
+   sound:'fire',    freq:155, bpm:42},
+];
+
+// ─── STORIES per fragrance family ─────────────────
+const STORIES = {
+  floral:{
+    zh:['清晨五点，花市还未开门。她站在铁门外，闻到了整个春天压缩在一角的气味。那是她第一次明白，香气是有记忆的。','玫瑰从来不只是玫瑰。在波斯古诗里，它是爱人的脸颊；在炼金术师手中，它是最接近灵魂的物质。','花瓣落在水面，不沉也不漂，停在那个边界——那是她调香时反复想起的画面。'],
+    en:['She walked through the greenhouse at dawn, when the flowers were still cold with night. The air was so thick with scent she could almost see it.','Every perfumer has one flower they keep returning to — not because it\'s rare, but because it knows something about them they don\'t yet understand.','The oldest rose in cultivation was pressed into a book in 1420. Someone thought it worth keeping. They were right.'],
+    fr:['Dans la vallée de Grasse, on dit que les fleurs parlent la nuit. Les parfumeurs qui y vivent finissent par les comprendre.','Elle avait appris à distinguer soixante-dix roses les yeux fermés. Ce n\'était pas un talent — c\'était une forme d\'amour.','Le jasmin se cueille avant l\'aube, car le soleil dévore ce que le parfumeur cherche. C\'est une course que les fleurs gagnent toujours.'],
+    jp:['夜明け前、花畑に入ると空気そのものが甘く重い。調香師はそこで初めて、香りが場所を持つことを理解した。','バラは何千年も人間に愛されてきた。それでも毎朝、同じように咲く。覚えていないのか、気にしないのか。','花びらが水に落ちた瞬間の静けさ。あれが彼女の基準だった——どんな香りもあの静寂に近づくものでなければならない。'],
+  },
+  woody:{
+    zh:['森林里最老的橡树有三百年了。它见过战争和婚礼，见过无数站在树荫下不知该说什么的人。木质香就是这种沉默。','他的工作室在山里。每年秋天打开窗，让林间气味待几天，再把记忆转化成香气。','木头燃烧之前先变热，先散发气味。那不是死亡——是几十年储存的阳光，终于决定释放。'],
+    en:['The lumberjack who first noticed cedarwood\'s scent said it smelled like "a Sunday that doesn\'t end." Perfumers have been trying to bottle that ever since.','Old growth forests have their own silence. Not empty — layered. Every woody fragrance is an attempt to translate that layering into something you can carry.','He kept a piece of sandalwood on his desk for thirty years. Visitors would ask what it was. "Patience," he always said.'],
+    fr:['Les forêts anciennes ont une odeur de temps suspendu — c\'est ce que cherchent les parfumeurs qui travaillent les bois.','Le cèdre de l\'Atlas pousse si lentement qu\'il faut un siècle pour obtenir du bois. Chaque goutte d\'essence est un siècle distillé.','Son atelier sentait le bois de santal et le silence. Les deux, disait-il, étaient nécessaires.'],
+    jp:['百年の木が倒れる音を聞いたことがある人は少ない。でもその香りは知っている——深く、温かく、時間そのものの匂いがする。','サンダルウッドの産地では、木を切る前に許可を求めるという。誰に？木に。笑い話ではない。','森の中で道に迷ったとき、彼は香りで方向を判断した。どの木が風上かで、海がわかる。それが木質香の本質だ。'],
+  },
+  citrus:{
+    zh:['佛手柑的皮在手指间滚动，油脂渗出的那一刻，整个房间变成了西西里的早晨。这是调香师最喜欢的魔术之一。','她的祖母每天早上喝加了橙皮的热水。不是为了健康，而是因为"那个气味让人觉得今天还是值得开始的"。','柑橘香是所有香气中最诚实的——它告诉你它马上就要消失，然后它消失了，留下一种奇怪的干净。'],
+    en:['The bergamot groves of Calabria produce fruit that looks inedible and smells like a wish. It\'s been the heart of Earl Grey tea and half the world\'s finest perfumes.','She said citrus notes are the only ones that understand impermanence. They arrive fully, burn bright, and leave without drama. She admired that.','A single lemon against a warm wrist releases something that took months of Sicilian sun to produce. That exchange always felt significant to her.'],
+    fr:['La bergamote de Calabre ne pousse nulle part avec la même intensité. Les parfumeurs appellent ça le terroir — comme pour le vin, mais pour le nez.','Les agrumes sont les notes les plus honnêtes du parfum : ils annoncent leur départ dès leur arrivée, puis s\'en vont proprement. Il y a une leçon là-dedans.','Le matin méditerranéen sent le zeste et le sel. Une combinaison si simple qu\'on se demande pourquoi tout le monde ne vit pas au bord de la mer.'],
+    jp:['ベルガモットの皮をむくと、しばらく指が光る。その油脂が香りの正体だ。太陽が何ヶ月もかけて蓄えたものが、一瞬で空気に解ける。','柑橘系の香りは必ず消える。ある調香師は言った。「消えることが、その香りの性格です」。','シチリアの朝市で、果物売りがレモンを半分に切った。その瞬間、市場全体が変わった。香りはそういうふうに空間を書き換える。'],
+  },
+  aquatic:{
+    zh:['海盐香诞生于一个调香师的困惑：为什么海风闻起来和海水完全不一样？他花了十年才找到答案：运动。','潮水退去后，礁石上留下的那层气味——盐、藻类、阳光的残余——是她记忆里最早的香气之一。','Jo Malone创造Wood Sage那天，据说她闭着眼睛在海边站了两个小时，什么都没做，只是呼吸。'],
+    en:['The smell of the sea is not the smell of water. It\'s the smell of everything the water has touched — salt, kelp, wood, whatever was left behind by the tide.','She grew up inland but was obsessed with ocean scents. Her friends found this strange. She thought it was the most logical thing — to love what you can\'t reach.','The first aquatic perfume was considered unwearable. Now it\'s the blueprint for an entire family. That\'s how taste evolves — through what used to seem wrong.'],
+    fr:['L\'odeur de la mer n\'est pas celle de l\'eau, mais celle de tout ce que l\'eau a traversé. Les parfumeurs aquatiques cherchent ce voyage.','Elle avait grandi loin de la mer. Pourtant, la première fois qu\'elle sentit une note marine, elle eut l\'impression de rentrer chez elle.','La vague ne sent rien, disait-il. C\'est ce qu\'elle emporte en se retirant qui fait le parfum.'],
+    jp:['海の匂いは水の匂いではない。塩であり、岩であり、波が運んできた何かの記憶だ。調香師はその「何か」を瓶に閉じ込めようとする。','彼女は海を知らずに育った。だから海の香りが好きだ——知らないものへの憧れは、知っているものへの愛より純粋だから。','潮が引いた後の岩の上の匂い。あれが彼女の原点だった。東京の研究室で何年もそれを再現しようとした。'],
+  },
+  oriental:{
+    zh:['沉香在阿拉伯文化里不只是香料——它是祈祷的载体，是送给神的礼物，是把时间压缩成烟雾的方式。','琥珀里封着一只飞了四千万年前的蜜蜂。那个气味如果能被闻到，一定是整个新生代的总结。','丝绸之路上，香料比黄金更重要。黄金只是财富的象征，而香气能改变一个房间里每个人的状态。'],
+    en:['Oud comes from a wounded tree — the resin forms as a response to infection. The most valuable material in perfumery is also a record of suffering turned beautiful.','The incense routes predate the silk roads. Before anyone traded silk or spice, they traded smoke. The desire to transform smell into ritual is perhaps the oldest human instinct.','She burned oud every evening for thirty years. Her apartment smelled of time itself — not old, not young, just dense with accumulated evenings.'],
+    fr:['L\'oud se forme dans les arbres blessés — une cicatrice qui sent. Les parfumeurs orientaux y voient une métaphore qu\'ils ne cherchent pas à expliquer.','La route des épices était en réalité une route des parfums. L\'encens voyageait plus loin que l\'or.','Dans les souks de Marrakech, chaque parfumeur possède un langage olfactif différent. La même note de safran raconte une histoire différente dans chaque boutique.'],
+    jp:['沈香は傷ついた木から生まれる。樹脂は感染への防御反応だ。世界で最も高価な香料は、苦しみが変容したものだ。','シルクロードが開かれる前から、香料の道はあった。人は絹より先に、煙を取引した。','彼は毎晩、琥珀のお香を焚いた。三十年後、そのアパートには時間の匂いがした——古くも新しくもない、ただ濃密な夜の積み重ね。'],
+  },
+  musk:{
+    zh:['麝香是所有香气中最难描述的——因为它描述的是另一个人的存在，而存在本身没有语言。','白麝香发明于1970年代，是为了替代动物麝香而创造的。结果它比原版更接近人们心里想要的东西。','她说最好的香水应该在别人离开房间之后，让人隐约觉得他们还在。那就是麝香的工作。'],
+    en:['White musk was invented as a substitute, but became something entirely new — not the animal, not the skin, but the idea of closeness itself translated into scent.','The question she always asked of a fragrance: can you smell it on the person, or can you smell the person through it? Musk is the only note that does the second.','It\'s the note that stays after everything else has said goodbye. That might be why it\'s always the last thing you notice and the first thing you miss.'],
+    fr:['Le musc blanc a été inventé comme substitut, mais est devenu quelque chose d\'entièrement nouveau — l\'idée même de la proximité.','Le meilleur parfum, disait-elle, est celui qu\'on ne remarque pas sur soi, mais dont les autres se souviennent. Le musc travaille dans cet espace invisible.','Il reste après que tout le reste est parti — la signature discrète que le temps efface en dernier.'],
+    jp:['ホワイトムスクは代替品として作られたが、全く新しいものになった——「近さ」というアイデアそのものを香りにしたもの。','彼女は言った。「最高の香水は、つけていることを忘れさせる。でも他の人は覚えている」。それがムスクの仕事だ。','他のすべてが消えた後に残るもの——それがムスクだ。最後に気づいて、最初に恋しくなる。'],
+  },
+  powder:{
+    zh:['鸢尾根在地里要放三年，才能开始变成香料。这叫做"熟成"，是时间同意参与的过程。','粉质香总是让人想起某个特定的房间、特定的人、特定的早晨。它不模仿自然，它模仿记忆。','她的外婆用一种粉质香水，牌子早就停产了。她花了二十年试图重新配制它，发现自己配的是记忆，不是香水。'],
+    en:['Iris takes three years in the ground before it becomes orris root — the powdery heart of half the classic perfumes. Some things cannot be rushed.','Powder scents don\'t smell like nature. They smell like interiors — rooms, fabrics, the air that has been lived in. That\'s a different kind of truth.','She had one photograph of her grandmother from the 1950s. She couldn\'t see what she was wearing, but she remembered the smell. That\'s what she was always trying to find.'],
+    fr:['L\'iris met trois ans dans la terre avant de devenir racine d\'iris. Certaines choses ne peuvent être précipitées.','Les notes poudrées ne sentent pas la nature. Elles sentent les intérieurs — les chambres, les tissus, l\'air habité. C\'est une autre forme de vérité.','Elle avait cherché pendant vingt ans à recréer le parfum de sa grand-mère. Ce qu\'elle comprit, c\'est qu\'elle recréait un souvenir — pas un parfum.'],
+    jp:['アイリスは三年間、土の中に置かれてから香料になる。急かすことはできない。時間が同意しなければ、香りは生まれない。','パウダー系の香りは自然の匂いではない。部屋の匂いだ——家具、布、人が住んだ空気。それは別種の真実だ。','祖母の香水は廃番になった。二十年かけて再現しようとした。気づいたのは、香水ではなく記憶を作ろうとしていたということだ。'],
+  },
+  earthy:{
+    zh:['第一场秋雨之后，泥土的气味叫做"petrichor"——这个词是1964年才被发明的。在那之前，人们只是闻，没有名字。','岩兰草生长在印度洋岛屿的斜坡上。当地人说，它的根向下生长的方向，就是水源的方向。','最古老的香水配方来自塞浦路斯，距今四千年。主要成分之一是松柏脂。人类第一次想要闻起来好，就用了泥土和树脂。'],
+    en:['The smell of rain on dry earth has a name: petrichor. It comes from bacteria releasing compounds when water arrives. Even the earth has a way of saying hello.','Vetiver roots grow downward — toward water, toward darkness, toward the oldest layers of the soil. That\'s where the fragrance comes from. Depth.','The oldest perfume recipe ever found is 4,000 years old, from Cyprus. The main ingredient was pine resin. The first thing humans wanted to smell like was a tree.'],
+    fr:['L\'odeur de la pluie sur la terre sèche a un nom : pétrichor. Même la terre a sa façon de dire bonjour.','Les racines de vétiver poussent vers le bas — vers l\'eau, vers les couches les plus anciennes du sol. C\'est là que se trouve le parfum.','La plus ancienne recette de parfum connue date de 4 000 ans, de Chypre. L\'ingrédient principal était la résine de pin. La première chose que les humains ont voulu sentir, c\'était un arbre.'],
+    jp:['乾いた土に雨が降った時の匂いを「ペトリコール」という。大地にも、挨拶の仕方がある。','ベチバーの根は下に向かって伸びる——水に向かって、暗さに向かって、土の最も古い層に向かって。香りはそこから来る。深さから。','現存する最古の香水レシピは4000年前のもの、キプロスで発見。主成分は松脂だった。人間が最初に纏いたいと思った香りは、木の匂いだった。'],
+  },
+};
+
+// YouTube search queries per family
+const YT_QUERIES = {
+  floral:   {zh:'花香氛围音乐 放松冥想',en:'floral ambient relaxing meditation music',fr:'musique florale ambiante relaxante',jp:'フローラル アンビエント リラックス音楽'},
+  woody:    {zh:'森林冥想音乐 木质香',  en:'forest meditation ambient soundscape',fr:'musique forêt méditation ambiance', jp:'森林 瞑想 アンビエント音楽'},
+  citrus:   {zh:'清晨轻音乐 清新柑橘', en:'morning fresh citrus ambient music',  fr:'musique matinale fraîche agrumes',  jp:'朝 爽やか シトラス アンビエント'},
+  aquatic:  {zh:'海浪冥想音乐 大海',   en:'ocean waves meditation soundscape',  fr:'musique ocean vagues méditation',   jp:'海 波音 瞑想 サウンドスケープ'},
+  oriental: {zh:'东方香氛冥想音乐',    en:'oriental incense ambient meditation', fr:'musique orientale encens ambiance', jp:'オリエンタル お香 瞑想音楽'},
+  musk:     {zh:'流水冥想轻音乐',      en:'soft stream meditation ambient',      fr:'eau douce méditation musique douce',jp:'流水 瞑想 リラックス音楽'},
+  powder:   {zh:'轻柔钢琴冥想音乐',   en:'soft piano meditative ambient music', fr:'piano doux méditatif relaxant',    jp:'ソフトピアノ 瞑想 アンビエント'},
+  earthy:   {zh:'雨声大地冥想音乐',   en:'rain earth nature meditation music',  fr:'pluie nature méditation musique',  jp:'雨音 大地 自然 瞑想音楽'},
+};
+
+const YT_LINK_LABELS = {
+  zh:'♪ 今日推荐配乐 →', en:"♪ Today\'s soundtrack →", fr:'♪ Musique du jour →', jp:'♪ 今日のBGM →',
+};
+
+function updateStory(){
+  const stEl=document.getElementById('story-text');
+  const lkEl=document.getElementById('yt-link');
+  if(!stEl||!lkEl)return;
+  if(!blend.length){stEl.textContent='';lkEl.style.display='none';return;}
+  const fam=blend[0].fam;
+  const pool=(STORIES[fam]||STORIES.floral)[lang]||STORIES.floral.zh;
+  // pick based on blend length for variety
+  stEl.textContent=pool[(blend.length-1)%pool.length];
+  // YT search link
+  const q=(YT_QUERIES[fam]||YT_QUERIES.floral)[lang]||YT_QUERIES.floral.en;
+  lkEl.href='https://www.youtube.com/results?search_query='+encodeURIComponent(q);
+  lkEl.textContent=YT_LINK_LABELS[lang]||YT_LINK_LABELS.en;
+  lkEl.style.display='inline';
+}
+
+const YT_PLAYLISTS = {
+  nature:['jfKfPfyJRdk','7NOSDKb0HlU','BHACKCNDMW8'],
+  piano:['qH3fETPsqDc','HuFYqnbVbzY','lFcSrYw2ARY'],
+  meditation:['lTRiuFIWV54','N-aK6JnyFmk','DWcJFNfaw9c'],
+  classical:['77ZozI0rw7w','kZYIFirerFQ','4To2r9g4oiU'],
+};
+const BLEND_NAMES = {
+  'floral+woody':{zh:'林间花圃',en:'Rose et Bois',fr:'Forêt Dorée',jp:'花と木の間'},
+  'floral+citrus':{zh:'晨光花束',en:'Morning Bloom',fr:'Lumière Fleurie',jp:'朝の花束'},
+  'floral+oriental':{zh:'东方花语',en:'Eastern Bloom',fr:'Nuit de Roses',jp:'東洋の花'},
+  'floral+aquatic':{zh:'雨后花园',en:'Rain Garden',fr:'Pluie de Fleurs',jp:'雨の庭'},
+  'woody+oriental':{zh:'神圣木质',en:'Sacred Wood',fr:'Bois Sacré',jp:'神聖な木'},
+  'woody+aquatic':{zh:'海岸雪松',en:'Salt Shore',fr:'Sel et Cèdre',jp:'塩の岸辺'},
+  'oriental+musk':{zh:'肌肤密语',en:'Skin Secret',fr:'Peau Dorée',jp:'肌の秘密'},
+  'citrus+aquatic':{zh:'地中海风',en:'Sea Citrus',fr:'Vent Marin',jp:'地中海の風'},
+  'floral+musk':{zh:'粉雾花絮',en:'Floral Mist',fr:'Brume Florale',jp:'花の霧'},
+  'woody+earthy':{zh:'林地深处',en:'Deep Forest',fr:'Forêt Profonde',jp:'深い森'},
+  'earthy+oriental':{zh:'大地火焰',en:'Earth & Ember',fr:'Terre et Braise',jp:'大地の炎'},
+  'citrus+floral':{zh:'晨光花束',en:'Morning Bloom',fr:'Lumière Fleurie',jp:'朝の花束'},
+};
+const TRACK_NAMES = {
+  floral:{zh:'鸟鸣花径',en:'Birdsong Path',fr:'Chemin Fleuri',jp:'花鳥の径'},
+  woody:{zh:'林风低语',en:'Forest Whisper',fr:'Murmure Forestier',jp:'林の囁き'},
+  citrus:{zh:'晨雨清香',en:'Morning Rain',fr:'Pluie du Matin',jp:'朝雨の香'},
+  aquatic:{zh:'海浪远方',en:'Distant Waves',fr:'Vagues Lointaines',jp:'遠い波'},
+  oriental:{zh:'篝火仪式',en:'Ember Ritual',fr:'Rituel du Feu',jp:'火の儀式'},
+  musk:{zh:'流水冥想',en:'Still Waters',fr:'Eaux Calmes',jp:'静水の瞑想'},
+  powder:{zh:'溪声轻唱',en:'Brook Song',fr:'Chanson du Ruisseau',jp:'小川の歌'},
+  earthy:{zh:'风过丛林',en:'Wind Through Leaves',fr:'Vent dans les Feuilles',jp:'葉を渡る風'},
+};
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+let lang='zh', blend=[], inkDrops=[], wcBlobs=[], playing=false;
+let audioCtx=null, masterGain=null, analyser=null, analyserBuf=null;
+let audioNodes=[];
+let bowlT=0, waveT=0, ytTabIdx=0, currentYtId=null;
+let stageSize=0, bowlR=0;
+
+// ═══════════════════════════════════
+// CURSOR
+// ═══════════════════════════════════
+const curEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{
+  curEl.style.left=e.clientX+'px'; curEl.style.top=e.clientY+'px';
+});
+
+// ═══════════════════════════════════
+// BOOT
+// ═══════════════════════════════════
+const bootBg=document.getElementById('boot-bg'), bootX=bootBg.getContext('2d');
+let bootBlobs=[];
+function initBoot(){
+  bootBg.width=innerWidth; bootBg.height=innerHeight;
+  const cols=['#e07888','#f0d060','#a8c850','#68b8d0','#e8a840','#c8a8d0','#9878c8','#d4a870'];
+  for(let i=0;i<10;i++) bootBlobs.push({x:Math.random()*bootBg.width,y:Math.random()*bootBg.height,r:70+Math.random()*150,c:cols[i%cols.length],vx:(Math.random()-.5)*.32,vy:(Math.random()-.5)*.32,ph:Math.random()*Math.PI*2,op:.032+Math.random()*.045});
+  animBoot();
+}
+function animBoot(){
+  if(document.getElementById('boot').classList.contains('fade'))return;
+  requestAnimationFrame(animBoot);
+  bootX.clearRect(0,0,bootBg.width,bootBg.height);
+  bootX.fillStyle='#f7f1e3'; bootX.fillRect(0,0,bootBg.width,bootBg.height);
+  bootBlobs.forEach(b=>{
+    b.ph+=.004; b.x+=b.vx; b.y+=b.vy;
+    if(b.x<-250||b.x>bootBg.width+250)b.vx*=-1;
+    if(b.y<-250||b.y>bootBg.height+250)b.vy*=-1;
+    const rr=b.r*(1+.08*Math.sin(b.ph));
+    const g=bootX.createRadialGradient(b.x,b.y,0,b.x,b.y,rr);
+    g.addColorStop(0,ha(b.c,b.op)); g.addColorStop(1,ha(b.c,0));
+    bootX.fillStyle=g; bootX.beginPath(); bootX.arc(b.x,b.y,rr,0,Math.PI*2); bootX.fill();
+  });
+}
+initBoot();
+
+function enterGarden(){
+  document.getElementById('boot').classList.add('fade');
+  setTimeout(()=>{
+    document.getElementById('app').classList.add('visible');
+    initApp();
+  },500);
+}
+
+// ═══════════════════════════════════
+// WATERCOLOR BG
+// ═══════════════════════════════════
+const bgC=document.getElementById('bg-canvas'), bgX=bgC.getContext('2d');
+function mkBlob(c){return{x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:140+Math.random()*250,c:c||'#c8b890',vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,ph:Math.random()*Math.PI*2,op:.052+Math.random()*.062};}
+function initWCBlobs(){
+  wcBlobs=[];
+  if(!blend.length){['#d8c8a0','#c8b880','#e4d4b0','#b8a878'].forEach(c=>wcBlobs.push(mkBlob(c)));return;}
+  blend.forEach((n,i)=>{const cnt=i===0?5:i===1?3:2; for(let k=0;k<cnt;k++)wcBlobs.push(mkBlob(n.c));});
+}
+function animBG(){
+  requestAnimationFrame(animBG);
+  bgC.width=innerWidth; bgC.height=innerHeight;
+  bgX.fillStyle='#f7f1e3'; bgX.fillRect(0,0,bgC.width,bgC.height);
+  if(!wcBlobs.length)initWCBlobs();
+  wcBlobs.forEach(b=>{
+    b.ph+=.003; b.x+=b.vx; b.y+=b.vy;
+    if(b.x<-400||b.x>bgC.width+400)b.vx*=-1;
+    if(b.y<-400||b.y>bgC.height+400)b.vy*=-1;
+    const rr=b.r*(1+.09*Math.sin(b.ph));
+    const g=bgX.createRadialGradient(b.x+Math.sin(b.ph)*10,b.y+Math.cos(b.ph)*7,0,b.x,b.y,rr);
+    g.addColorStop(0,ha(b.c,b.op*1.4)); g.addColorStop(.5,ha(b.c,b.op)); g.addColorStop(1,ha(b.c,0));
+    bgX.fillStyle=g; bgX.beginPath(); bgX.arc(b.x,b.y,rr*1.06,0,Math.PI*2); bgX.fill();
+  });
+  if(blend.length>1){
+    bgX.save(); bgX.globalCompositeOperation='multiply';
+    blend.slice(0,4).forEach((n,i)=>{
+      const x=bgC.width*(.22+i*.2),y=bgC.height*(.5+Math.sin(bowlT+i)*.1);
+      const g=bgX.createRadialGradient(x,y,0,x,y,165);
+      g.addColorStop(0,ha(n.c,.06)); g.addColorStop(1,ha(n.c,0));
+      bgX.fillStyle=g; bgX.beginPath(); bgX.arc(x,y,165,0,Math.PI*2); bgX.fill();
+    });
+    bgX.restore();
+  }
+}
+animBG();
+
+// ═══════════════════════════════════
+// BOWL CANVAS
+// ═══════════════════════════════════
+const bowlC=document.getElementById('bowl-canvas'), bCtx=bowlC.getContext('2d');
+function sizeBowl(){
+  const wrap=document.getElementById('bowl-wrap');
+  const sz=wrap.offsetWidth||120;
+  bowlC.width=sz; bowlC.height=sz; bowlR=sz/2;
+}
+function animBowl(){
+  requestAnimationFrame(animBowl);
+  bowlT+=.006;
+  const S=bowlC.width, R=S/2;
+  bCtx.clearRect(0,0,S,S);
+  const base=bCtx.createRadialGradient(R,R*.9,8,R,R,R*.98);
+  base.addColorStop(0,'rgba(253,249,241,.98)'); base.addColorStop(.7,'rgba(247,240,226,.97)'); base.addColorStop(1,'rgba(238,228,208,.96)');
+  bCtx.beginPath(); bCtx.arc(R,R,R*.97,0,Math.PI*2); bCtx.fillStyle=base; bCtx.fill();
+
+  inkDrops.forEach(d=>{
+    d.t+=.006; d.r=Math.min(d.r+.4,d.mr);
+    const wx=Math.sin(d.t+d.ph)*5,wy=Math.cos(d.t*.7+d.ph)*3.5;
+    for(let k=0;k<3;k++){
+      const kk=k/3;
+      const g=bCtx.createRadialGradient(d.x+wx*.2,d.y+wy*.2,0,d.x+wx,d.y+wy,d.r*(.5+kk*.55));
+      g.addColorStop(0,ha(d.c,d.op*(.95-kk*.3))); g.addColorStop(.4,ha(d.c,d.op*(.6-kk*.22))); g.addColorStop(.8,ha(d.c,d.op*(.18-kk*.08))); g.addColorStop(1,ha(d.c,0));
+      bCtx.fillStyle=g; bCtx.beginPath();
+      bCtx.ellipse(d.x+wx,d.y+wy,d.r*(1.08-kk*.05)*(1+.04*Math.sin(d.t+k)),d.r*(.92+kk*.05)*(1+.04*Math.cos(d.t+k)),d.ang,0,Math.PI*2); bCtx.fill();
+    }
+  });
+  if(blend.length>1){
+    bCtx.save(); bCtx.globalCompositeOperation='soft-light'; bCtx.globalAlpha=.05;
+    blend.forEach((n,i)=>{
+      const a=bowlT*.28+i/blend.length*Math.PI*2;
+      const x=R+Math.cos(a)*R*.35,y=R+Math.sin(a)*R*.35;
+      const g=bCtx.createRadialGradient(x,y,0,x,y,R*.38);
+      g.addColorStop(0,ha(n.c,.8)); g.addColorStop(1,ha(n.c,0));
+      bCtx.fillStyle=g; bCtx.beginPath(); bCtx.arc(x,y,R*.38,0,Math.PI*2); bCtx.fill();
+    });
+    bCtx.restore();
+  }
+  bCtx.beginPath(); bCtx.arc(R,R,R*.97,0,Math.PI*2);
+  bCtx.strokeStyle='rgba(180,150,100,.18)'; bCtx.lineWidth=1.2; bCtx.stroke();
+  const sh=bCtx.createRadialGradient(R,R,R*.65,R,R,R*.97);
+  sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,.09)');
+  bCtx.fillStyle=sh; bCtx.beginPath(); bCtx.arc(R,R,R*.97,0,Math.PI*2); bCtx.fill();
+  const sp=bCtx.createRadialGradient(R*.62,R*.54,0,R*.62,R*.54,R*.28);
+  sp.addColorStop(0,'rgba(255,255,255,.2)'); sp.addColorStop(1,'rgba(255,255,255,0)');
+  bCtx.fillStyle=sp; bCtx.beginPath(); bCtx.arc(R*.62,R*.54,R*.28,0,Math.PI*2); bCtx.fill();
+}
+animBowl();
+
+// ═══════════════════════════════════
+// WAVEFORM
+// ═══════════════════════════════════
+const waveC=document.getElementById('wave-canvas'), waveX=waveC.getContext('2d');
+function animWave(){
+  requestAnimationFrame(animWave);
+  const W=waveC.offsetWidth||180, H=44;
+  waveC.width=W; waveC.height=H;
+  waveX.clearRect(0,0,W,H);
+  waveX.fillStyle='rgba(200,178,140,.08)'; waveX.fillRect(0,0,W,H);
+  const col=blend.length?blend[0].c:'#b09870';
+  if(!analyser||!playing){
+    waveT+=.02;
+    waveX.beginPath();
+    for(let x=0;x<W;x++){const y=H/2+Math.sin(x*.054+waveT)*2+Math.sin(x*.02+waveT*.38)*1.3; x?waveX.lineTo(x,y):waveX.moveTo(x,y);}
+    waveX.strokeStyle=ha(col,.2); waveX.lineWidth=1.2; waveX.stroke(); return;
+  }
+  analyser.getByteTimeDomainData(analyserBuf);
+  const sw=W/analyserBuf.length;
+  waveX.beginPath();
+  for(let k=0;k<analyserBuf.length;k++){const y=H/2+(analyserBuf[k]/128-1)*15; k?waveX.lineTo(k*sw,y):waveX.moveTo(0,y);}
+  waveX.strokeStyle=col; waveX.lineWidth=1.5; waveX.shadowColor=col; waveX.shadowBlur=5; waveX.stroke(); waveX.shadowBlur=0;
+}
+animWave();
+
+// ═══════════════════════════════════
+// RADIAL NOTE PALETTE — build buttons
+// ═══════════════════════════════════
+function buildPalette(){
+  const stage=document.getElementById('stage');
+  stageSize=stage.offsetWidth;
+  const cx=stageSize/2, cy=stageSize/2;
+  const bowlRadius=stageSize*.21; // 42% diameter / 2
+  const orbitR=stageSize*.42;    // notes orbit at 42% of stage radius from center
+
+  // remove old buttons
+  stage.querySelectorAll('.note-btn').forEach(el=>el.remove());
+
+  const total=NOTES.length;
+  NOTES.forEach((n,i)=>{
+    const angle=-Math.PI/2 + (i/total)*Math.PI*2;
+    const bx=cx+Math.cos(angle)*orbitR;
+    const by=cy+Math.sin(angle)*orbitR;
+    const btnSize=Math.max(36,Math.min(52,stageSize*.1));
+
+    const btn=document.createElement('div');
+    btn.className='note-btn'+(blend.find(b=>b.id===n.id)?' placed':'');
+    btn.dataset.id=n.id;
+    btn.style.cssText=`left:${bx}px;top:${by}px;width:${btnSize}px;height:${btnSize}px;
+      background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.58), ${n.c});
+      box-shadow:0 2px 10px ${ha(n.c,.35)}, inset 0 1px 2px rgba(255,255,255,.5);`;
+
+    // label
+    const lbl=document.createElement('div');
+    lbl.className='nb-label';
+    const lblText=n[lang]||n.zh;
+    // position label outward from center
+    const lblDist=btnSize*.65+14;
+    const lx=Math.cos(angle)*lblDist, ly=Math.sin(angle)*lblDist;
+    lbl.style.cssText=`left:calc(50% + ${lx}px);top:calc(50% + ${ly}px);transform:translate(-50%,-50%)`;
+    lbl.textContent=lblText;
+    btn.appendChild(lbl);
+
+    // order badge
+    const idx=blend.findIndex(b=>b.id===n.id);
+    const badge=document.createElement('div');
+    badge.className='nb-order';
+    if(idx>=0) badge.textContent=idx+1;
+    btn.appendChild(badge);
+
+    btn.addEventListener('click',()=>addNote(n.id));
+    btn.addEventListener('mouseenter',e=>showTip(e,n.id));
+    btn.addEventListener('mouseleave',hideTip);
+    btn.addEventListener('touchend',e=>{e.preventDefault();addNote(n.id);});
+
+    stage.appendChild(btn);
+  });
+}
+
+window.addEventListener('resize',()=>{sizeBowl();buildPalette();});
+
+// ═══════════════════════════════════
+// INIT APP
+// ═══════════════════════════════════
+function initApp(){
+  sizeBowl();
+  buildPalette();
+  renderPetals();
+  applyLang();
+}
+
+// ═══════════════════════════════════
+// ADD NOTE
+// ═══════════════════════════════════
+function addNote(id){
+  if(blend.length>=6||blend.find(b=>b.id===id))return;
+  const n=NOTES.find(x=>x.id===id); if(!n)return;
+  blend.push(n);
+
+  // Ripple on button
+  const btn=document.querySelector(`.note-btn[data-id="${id}"]`);
+  if(btn){
+    const rip=document.createElement('div');
+    rip.className='ripple-dot'; rip.style.color=n.c;
+    rip.style.cssText+=`;left:50%;top:50%;`;
+    btn.appendChild(rip);
+    setTimeout(()=>rip.remove(),700);
+  }
+
+  // Ink drop in bowl
+  const S=bowlC.width||120, R=S/2;
+  const idx=blend.length-1;
+  const angle=-Math.PI/2+(idx/5)*Math.PI*2;
+  const dist=idx===0?10:22+idx*9;
+  inkDrops.push({x:R+Math.cos(angle)*dist,y:R+Math.sin(angle)*dist,r:3,mr:idx===0?R*.46:R*.29+Math.random()*R*.16,c:n.c,op:.62,t:Math.random()*100,ph:Math.random()*Math.PI*2,ang:Math.random()*Math.PI});
+
+  wcBlobs=[];
+  document.querySelector('.drop-hint').style.opacity='0';
+
+  buildPalette();
+  updateBlendName(); updateNarrative(); updatePetals(); updateTrackName(); updateStory();
+  if(playing)rebuildAudio(); else startAudio();
+}
+
+function clearBowl(){
+  blend=[]; inkDrops=[]; wcBlobs=[];
+  document.querySelector('.drop-hint').style.opacity='1';
+  document.getElementById('blend-name').textContent='—';
+  document.getElementById('narrative').textContent='';
+  document.getElementById('track-name').textContent=L10N[lang].wait;
+  updateStory();
+  stopAudio(); buildPalette(); updatePetals(); currentYtId=null;
+}
+
+// ═══════════════════════════════════
+// UI UPDATES
+// ═══════════════════════════════════
+function updateBlendName(){
+  if(!blend.length)return;
+  const fams=[...new Set(blend.map(n=>n.fam))];
+  let name=null;
+  outer:for(let a=0;a<fams.length;a++)for(let b=a+1;b<fams.length;b++){
+    const k=[fams[a],fams[b]].sort().join('+');
+    if(BLEND_NAMES[k]){name=BLEND_NAMES[k][lang]||BLEND_NAMES[k].zh;break outer;}
+  }
+  document.getElementById('blend-name').textContent=name||blend.map(n=>n[lang]||n.zh).join(' · ');
+}
+function updateNarrative(){
+  const Ln=L10N[lang], names=blend.map(n=>n[lang]||n.zh);
+  const fn=Ln.narr[Math.min(blend.length-1,Ln.narr.length-1)];
+  document.getElementById('narrative').textContent=fn?fn(names):'';
+}
+function updateTrackName(){
+  if(!blend.length)return;
+  const t=TRACK_NAMES[blend[0].fam]||TRACK_NAMES.floral;
+  document.getElementById('track-name').textContent=t[lang]||t.zh;
+}
+function updateYT(){
+  if(!blend.length)return;
+  const tabKeys=['nature','piano','meditation','classical'];
+  const key=tabKeys[ytTabIdx%4];
+  const pool=YT_PLAYLISTS[key];
+  const famIdx={floral:0,citrus:0,powder:0,aquatic:1,woody:1,earthy:1,oriental:2,musk:2}[blend[0].fam]||0;
+  const vid=pool[famIdx%pool.length];
+  if(vid===currentYtId)return;
+  currentYtId=vid;
+  document.getElementById('yt-frame').innerHTML=`<iframe src="https://www.youtube.com/embed/${vid}?autoplay=0&loop=1&playlist=${vid}&controls=1&modestbranding=1&rel=0" allow="autoplay;encrypted-media" allowfullscreen></iframe>`;
+}
+
+function renderPetals(){
+  document.getElementById('petals').innerHTML=L10N[lang].petals.map(p=>`<div class="petal" data-p="${p}">${p}</div>`).join('');
+}
+function updatePetals(){
+  const fams=blend.map(n=>n.fam), Ln=L10N[lang], on=new Set();
+  if(fams.includes('floral')||fams.includes('powder'))on.add(Ln.petals[0]);
+  if(fams.includes('citrus')||fams.includes('aquatic'))on.add(Ln.petals[1]);
+  if(fams.includes('woody')||fams.includes('earthy'))on.add(Ln.petals[2]);
+  if(fams.includes('oriental')||fams.includes('musk'))on.add(Ln.petals[3]);
+  if(fams.includes('aquatic'))on.add(Ln.petals[4]);
+  if(blend.length>=2)on.add(Ln.petals[5]);
+  document.querySelectorAll('.petal').forEach(el=>el.classList.toggle('on',on.has(el.dataset.p)));
+}
+
+function renderYTTabs(){
+  document.getElementById('yt-tabs').innerHTML=L10N[lang].ytTabs.map((t,i)=>`<div class="yt-tab${ytTabIdx===i?' on':''}" onclick="setYTTab(${i})">${t}</div>`).join('');
+}
+function setYTTab(i){ytTabIdx=i;currentYtId=null;renderYTTabs();if(blend.length)updateYT();}
+
+// ═══════════════════════════════════
+// LANG
+// ═══════════════════════════════════
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lng').forEach(el=>el.classList.toggle('on',el.textContent.trim()==={zh:'中文',en:'EN',fr:'FR',jp:'日本語'}[l]));
+  applyLang();
+}
+function applyLang(){
+  const Ln=L10N[lang];
+  document.getElementById('lbl-sound').textContent=Ln.sound;
+  document.getElementById('lbl-vol').textContent=Ln.vol;
+  document.getElementById('btn-clear').textContent=Ln.clear;
+  document.getElementById('hint-text').textContent=Ln.hint;
+  if(!blend.length)document.getElementById('track-name').textContent=Ln.wait;
+  const lsEl=document.getElementById('lbl-story'); if(lsEl) lsEl.textContent=Ln.story;
+  buildPalette(); renderPetals(); updatePetals();
+  if(blend.length){updateBlendName();updateNarrative();updateTrackName();updateStory();}
+}
+
+// ═══════════════════════════════════
+// TOOLTIP
+// ═══════════════════════════════════
+const tip=document.getElementById('tooltip');
+function showTip(e,id){
+  const n=NOTES.find(x=>x.id===id); if(!n)return;
+  document.getElementById('tt-name').textContent=n[lang]||n.zh;
+  document.getElementById('tt-brand').textContent=n.brand;
+  document.getElementById('tt-desc').textContent=n.d[lang]||n.d.zh;
+  tip.style.opacity='1'; curEl.classList.add('big'); posTip(e);
+}
+function hideTip(){tip.style.opacity='0';curEl.classList.remove('big');}
+function posTip(e){
+  tip.style.left=Math.min(e.clientX+16,innerWidth-185)+'px';
+  tip.style.top=Math.min(e.clientY-6,innerHeight-130)+'px';
+}
+document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1')posTip(e);});
+
+// ═══════════════════════════════════
+// AUDIO ENGINE — Natural Sound Synthesis
+// sound types: bird, ocean, wind, rain, fire, stream
+// ═══════════════════════════════════
+function initAudio(){
+  if(audioCtx)return;
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  masterGain=audioCtx.createGain(); masterGain.gain.value=.55;
+  analyser=audioCtx.createAnalyser(); analyser.fftSize=512;
+  analyserBuf=new Uint8Array(analyser.frequencyBinCount);
+  masterGain.connect(analyser); analyser.connect(audioCtx.destination);
+}
+function stopAudio(){
+  audioNodes.forEach(n=>{try{n.stop?.();n.disconnect?.();}catch(e){}});
+  audioNodes=[]; playing=false;
+  document.getElementById('play-btn').textContent='▶';
+  document.getElementById('play-btn').classList.remove('on');
+}
+function startAudio(){
+  initAudio();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  stopAudio();
+  if(!blend.length)return;
+  playing=true;
+  document.getElementById('play-btn').textContent='■';
+  document.getElementById('play-btn').classList.add('on');
+  buildAudio();
+}
+function rebuildAudio(){stopAudio();setTimeout(startAudio,120);}
+function togglePlay(){if(!blend.length)return; playing?stopAudio():startAudio();}
+function setVolume(v){if(masterGain)masterGain.gain.setTargetAtTime(v/100,audioCtx.currentTime,.1);}
+
+function makeReverb(sec){
+  const conv=audioCtx.createConvolver(), sr=audioCtx.sampleRate, l=sr*Math.max(.5,sec);
+  const buf=audioCtx.createBuffer(2,l,sr);
+  for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let k=0;k<l;k++)d[k]=(Math.random()*2-1)*Math.pow(1-k/l,1.9);}
+  conv.buffer=buf; return conv;
+}
+
+function makeNoise(dur){
+  const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*dur,audioCtx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let k=0;k<d.length;k++)d[k]=Math.random()*2-1;
+  return buf;
+}
+
+// ── NATURAL SOUND BUILDERS ──
+function buildBird(vol,freq,idx){
+  // Chirping birds: short sine bursts with random timing
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(2.5); rev.connect(masterGain); audioNodes.push(rev);
+  // ambient flute-like pad underneath
+  const pad=audioCtx.createOscillator(), pg=audioCtx.createGain();
+  pad.type='sine'; pad.frequency.value=freq*.5;
+  pg.gain.setValueAtTime(0,now); pg.gain.linearRampToValueAtTime(vol*.18,now+2+idx*.4);
+  pad.connect(pg); pg.connect(rev); pad.start(now+idx*.2); audioNodes.push(pad,pg);
+  // chirp sequencer
+  const chirp=()=>{
+    if(!playing)return;
+    const f=freq*(1.5+Math.random());
+    const dur=.05+Math.random()*.08;
+    const count=2+Math.floor(Math.random()*3);
+    for(let c=0;c<count;c++){
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine';
+      o.frequency.setValueAtTime(f*(1+Math.random()*.2),audioCtx.currentTime+c*.06);
+      o.frequency.linearRampToValueAtTime(f*(1.2+Math.random()*.3),audioCtx.currentTime+c*.06+dur);
+      g.gain.setValueAtTime(0,audioCtx.currentTime+c*.06);
+      g.gain.linearRampToValueAtTime(vol*.4,audioCtx.currentTime+c*.06+.01);
+      g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+c*.06+dur+.04);
+      o.connect(g); g.connect(rev);
+      o.start(audioCtx.currentTime+c*.06); o.stop(audioCtx.currentTime+c*.06+dur+.05);
+      audioNodes.push(o,g);
+    }
+    const next=(.8+Math.random()*2.5)*1000;
+    setTimeout(chirp,next);
+  };
+  setTimeout(chirp,(1+idx)*800+Math.random()*1000);
+}
+
+function buildOcean(vol,freq,idx){
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(4); rev.connect(masterGain); audioNodes.push(rev);
+  // white noise filtered to wave sweep
+  const nBuf=makeNoise(8);
+  const src=audioCtx.createBufferSource();
+  src.buffer=nBuf; src.loop=true;
+  const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=600; lpf.Q.value=.8;
+  const lfo=audioCtx.createOscillator(), lg=audioCtx.createGain();
+  lfo.frequency.value=.08+idx*.02; lg.gain.value=350;
+  lfo.connect(lg); lg.connect(lpf.frequency);
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol*.55,now+3+idx*.5);
+  src.connect(lpf); lpf.connect(g); g.connect(rev);
+  src.start(now+idx*.2); lfo.start(now); audioNodes.push(src,lpf,lfo,lg,g);
+  // deep wave sub-tone
+  const sub=audioCtx.createOscillator(), sg=audioCtx.createGain();
+  sub.type='sine'; sub.frequency.value=55+idx*5;
+  const slfo=audioCtx.createOscillator(), slg=audioCtx.createGain();
+  slfo.frequency.value=.06+idx*.015; slg.gain.value=vol*.12;
+  slfo.connect(slg); slg.connect(sg.gain);
+  sg.gain.setValueAtTime(vol*.05,now); sub.connect(sg); sg.connect(masterGain);
+  sub.start(now+idx*.3); slfo.start(now); audioNodes.push(sub,sg,slfo,slg);
+}
+
+function buildWind(vol,freq,idx){
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(3.5); rev.connect(masterGain); audioNodes.push(rev);
+  // bandpass-filtered noise with slow LFO sweep
+  const nBuf=makeNoise(6);
+  const src=audioCtx.createBufferSource();
+  src.buffer=nBuf; src.loop=true;
+  const bpf=audioCtx.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=freq*.8; bpf.Q.value=1.2;
+  const lfo=audioCtx.createOscillator(), lg=audioCtx.createGain();
+  lfo.frequency.value=.04+idx*.01; lg.gain.value=freq*.5;
+  lfo.connect(lg); lg.connect(bpf.frequency);
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol*.45,now+2.5+idx*.5);
+  src.connect(bpf); bpf.connect(g); g.connect(rev);
+  src.start(now+idx*.2); lfo.start(now); audioNodes.push(src,bpf,lfo,lg,g);
+  // howling tone
+  const osc=audioCtx.createOscillator(), og=audioCtx.createGain();
+  osc.type='sawtooth'; osc.frequency.value=freq*.25;
+  const trem=audioCtx.createOscillator(), tg=audioCtx.createGain();
+  trem.frequency.value=.15+idx*.03; tg.gain.value=.015;
+  trem.connect(tg); tg.connect(og.gain);
+  og.gain.setValueAtTime(0,now); og.gain.linearRampToValueAtTime(vol*.22,now+3+idx*.4);
+  osc.connect(og); og.connect(rev);
+  osc.start(now+idx*.3); trem.start(now); audioNodes.push(osc,og,trem,tg);
+}
+
+function buildRain(vol,freq,idx){
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(1.8); rev.connect(masterGain); audioNodes.push(rev);
+  // rain: highpass white noise
+  const nBuf=makeNoise(5);
+  const src=audioCtx.createBufferSource();
+  src.buffer=nBuf; src.loop=true;
+  const hpf=audioCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=2000; hpf.Q.value=.5;
+  const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=8000;
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol*.38,now+2+idx*.4);
+  src.connect(hpf); hpf.connect(lpf); lpf.connect(g); g.connect(masterGain);
+  src.start(now+idx*.2); audioNodes.push(src,hpf,lpf,g);
+  // occasional drops — bright plucks
+  const drip=()=>{
+    if(!playing)return;
+    const o=audioCtx.createOscillator(), dg=audioCtx.createGain();
+    o.type='sine'; o.frequency.value=freq*(1+Math.random()*.5);
+    dg.gain.setValueAtTime(vol*.22,audioCtx.currentTime);
+    dg.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.18);
+    o.connect(dg); dg.connect(rev);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+.2);
+    audioNodes.push(o,dg);
+    setTimeout(drip,(80+Math.random()*400));
+  };
+  setTimeout(drip,(1+idx)*600);
+}
+
+function buildFire(vol,freq,idx){
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(2); rev.connect(masterGain); audioNodes.push(rev);
+  // fire crackle: shaped noise bursts
+  const nBuf=makeNoise(4);
+  const src=audioCtx.createBufferSource();
+  src.buffer=nBuf; src.loop=true;
+  const lpf=audioCtx.createBiquadFilter(); lpf.type='lowpass'; lpf.frequency.value=1200; lpf.Q.value=.6;
+  const lfo=audioCtx.createOscillator(), lg=audioCtx.createGain();
+  lfo.frequency.value=.3+Math.random()*.2; lg.gain.value=300;
+  lfo.connect(lg); lg.connect(lpf.frequency);
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol*.4,now+2.5+idx*.4);
+  src.connect(lpf); lpf.connect(g); g.connect(rev);
+  src.start(now+idx*.2); lfo.start(now); audioNodes.push(src,lpf,lfo,lg,g);
+  // warm bass drone — much softer than old sawtooth
+  const drone=audioCtx.createOscillator(), dg=audioCtx.createGain();
+  drone.type='sine'; drone.frequency.value=freq*.5;
+  const dlfo=audioCtx.createOscillator(), dlg=audioCtx.createGain();
+  dlfo.frequency.value=.08+idx*.02; dlg.gain.value=vol*.08;
+  dlfo.connect(dlg); dlg.connect(dg.gain);
+  dg.gain.setValueAtTime(0,now); dg.gain.linearRampToValueAtTime(vol*.18,now+3+idx*.5);
+  drone.connect(dg); dg.connect(rev);
+  drone.start(now+idx*.35); dlfo.start(now); audioNodes.push(drone,dg,dlfo,dlg);
+  // pop/crackle sequencer
+  const crack=()=>{
+    if(!playing)return;
+    const o=audioCtx.createOscillator(), cg=audioCtx.createGain();
+    o.type='triangle'; o.frequency.value=freq*(2+Math.random()*3);
+    cg.gain.setValueAtTime(vol*.15,audioCtx.currentTime);
+    cg.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.04+Math.random()*.06);
+    o.connect(cg); cg.connect(rev);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+.1);
+    audioNodes.push(o,cg);
+    setTimeout(crack,50+Math.random()*350);
+  };
+  setTimeout(crack,(1+idx)*700);
+}
+
+function buildStream(vol,freq,idx){
+  const now=audioCtx.currentTime;
+  const rev=makeReverb(3); rev.connect(masterGain); audioNodes.push(rev);
+  // babbling brook: mid bandpass noise + gentle melody
+  const nBuf=makeNoise(6);
+  const src=audioCtx.createBufferSource();
+  src.buffer=nBuf; src.loop=true;
+  const bpf=audioCtx.createBiquadFilter(); bpf.type='bandpass'; bpf.frequency.value=800+idx*80; bpf.Q.value=2;
+  const lfo=audioCtx.createOscillator(), lg=audioCtx.createGain();
+  lfo.frequency.value=.18+idx*.04; lg.gain.value=200;
+  lfo.connect(lg); lg.connect(bpf.frequency);
+  const g=audioCtx.createGain();
+  g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(vol*.32,now+2+idx*.4);
+  src.connect(bpf); bpf.connect(g); g.connect(rev);
+  src.start(now+idx*.2); lfo.start(now); audioNodes.push(src,bpf,lfo,lg,g);
+  // gentle water melody
+  const scale=[1,1.125,1.25,1.5,1.667,2];
+  const mg=audioCtx.createGain(), mr2=makeReverb(2.5);
+  mg.gain.setValueAtTime(0,now); mg.gain.linearRampToValueAtTime(vol*.3,now+1.5);
+  mg.connect(mr2); mr2.connect(masterGain); audioNodes.push(mg,mr2);
+  let ni=idx;
+  const note=()=>{
+    if(!playing)return;
+    const o=audioCtx.createOscillator(), ng=audioCtx.createGain();
+    const dur=(60/freq*80)*(1+Math.random()*.6);
+    o.type='sine'; o.frequency.value=freq*scale[ni++%scale.length];
+    ng.gain.setValueAtTime(.04,audioCtx.currentTime);
+    ng.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);
+    o.connect(ng); ng.connect(mg);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime+dur+.05);
+    audioNodes.push(o,ng);
+    setTimeout(note,dur*900*(0.8+Math.random()*.4));
+  };
+  setTimeout(note,(1.2+idx)*900);
+}
+
+function buildAudio(){
+  blend.forEach((n,idx)=>{
+    const orderScale=idx===0?1:idx===1?.72:.5;
+    const vol=(.09/blend.length)*orderScale;
+    const freqShift=1+idx*.012;
+
+    const pan=audioCtx.createStereoPanner();
+    pan.pan.value=blend.length>1?((idx/(blend.length-1))*2-1)*.28:0;
+    pan.connect(masterGain); audioNodes.push(pan);
+
+    // Route per sound type — no more harsh sawtooth drones
+    switch(n.sound){
+      case 'bird':   buildBird  (vol,n.freq*freqShift,idx); break;
+      case 'ocean':  buildOcean (vol,n.freq*freqShift,idx); break;
+      case 'wind':   buildWind  (vol,n.freq*freqShift,idx); break;
+      case 'rain':   buildRain  (vol,n.freq*freqShift,idx); break;
+      case 'fire':   buildFire  (vol,n.freq*freqShift,idx); break;
+      case 'stream': buildStream(vol,n.freq*freqShift,idx); break;
+    }
+  });
+}
+
+// ═══════════════════════════════════
+// UTIL
+// ═══════════════════════════════════
+function ha(hex,a){
+  if(!hex||!hex.startsWith('#'))return`rgba(180,140,80,${a})`;
+  return`rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${a})`;
+}
+</script>
+</body>
+</html>
